@@ -1,5 +1,5 @@
 from store.book_service import rent_book, return_book
-from store.serializers import AuthorSerializer, BookSerializer, UserSerializer
+from store.serializers import AuthorSerializer, BookSerializer, UserSerializer, CreateBookSerializer
 from rest_framework import mixins, generics
 from . models import User, Author, Book
 from rest_framework.views import APIView
@@ -27,15 +27,21 @@ class AuthorList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.Generi
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
-class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+class BookList(mixins.ListModelMixin, generics.GenericAPIView):
     serializer_class = BookSerializer
     queryset = Book.objects.all()
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
+
+class BookCreat(mixins.CreateModelMixin, generics.GenericAPIView):
+    serializer_class = CreateBookSerializer
+    queryset = Book.objects.all()
+
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
 
 class BookRentable(APIView):
     def get(self, request):
