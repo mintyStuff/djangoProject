@@ -1,15 +1,15 @@
 from store.book_service import rent_book, return_book
 from store.serializers import AuthorSerializer, BookSerializer, UserSerializer
 from rest_framework import mixins, generics
-from rest_framework.decorators import action
 from . models import User, Author, Book
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
 
 
-class UserList(mixins.ListModelMixin,
-                  mixins.CreateModelMixin,
-                  generics.GenericAPIView):
-    queryset = User.objects.all()
+class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     serializer_class = UserSerializer
+    queryset = User.objects.all()
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -17,11 +17,9 @@ class UserList(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
-class AuthorList(mixins.ListModelMixin,
-                  mixins.CreateModelMixin,
-                  generics.GenericAPIView):
-    queryset = Author.objects.all()
+class AuthorList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     serializer_class = AuthorSerializer
+    queryset = Author.objects.all()
 
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -29,34 +27,36 @@ class AuthorList(mixins.ListModelMixin,
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
-class BookList(mixins.ListModelMixin,
-                  mixins.CreateModelMixin,
-                  mixins.UpdateModelMixin,
-                  generics.GenericAPIView):
-                  
-    queryset = Book.objects.all()
+class BookList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     serializer_class = BookSerializer
+    queryset = Book.objects.all()
 
-    def post(self, request, *args, **kwargs):
-        return self.create(request, *args, **kwargs)
-    
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
 
-    def get_rentable(self, request, *args, **kwargs):
-        filtered_queryset = self.queryset.filter(user=None).distinct()
-        self.queryset = filtered_queryset
-        return self.list(request, *args, **kwargs)
+    def post(self, request, *args, **kwargs):
+        return self.create(request, *args, **kwargs)
 
-    def put_rent(self, request, bookId='None', userId='None', *args, **kwargs):
+class BookRentable(APIView):
+    def get(self, request):
+        book = Book.objects.all().filter(user=None).distinct()
+        serializer = BookSerializer(book, many=True)
+        return Response(serializer.data)
+
+class BookRent(APIView):
+
+    def put(self, request, bookId, userId):
         update_book = rent_book(bookId, userId)
-        request.data = update_book
-        response = super().update(request, *args, **kwargs)
-        return response
+        update_book.save()
+        serializer = BookSerializer(update_book)
+        print(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @action(methods=['put'], detail=True, url_path='books/rent/', url_name='bla')
-    def put_return(self, request, bookId='None', *args, **kwargs):
-        book = return_book(bookId)
-        request.data = book
-        response = super().update(request, *args, **kwargs)
-        return response
+class BookReturn(APIView):
+        
+    def put(self, request, returnedBookId):
+        update_book = return_book(returnedBookId)
+        update_book.save()
+        serializer = BookSerializer(update_book)
+        print(serializer.data)
+        return Response(serializer.data, status=status.HTTP_200_OK)
