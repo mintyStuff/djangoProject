@@ -1,13 +1,44 @@
 from store.book_service import rent_book, return_book
 from store.serializers import AuthorSerializer, BookSerializer, UserSerializer, CreateBookSerializer
 from rest_framework import mixins, generics
-from . models import User, Author, Book
+from . models import Author, Book # User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authtoken.models import Token
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 
+
+class Login(mixins.CreateModelMixin, generics.GenericAPIView):
+    def post(self, request, *args, **kwargs):
+        user = get_object_or_404(User, username=request.data['username'])
+        if not user.check_password(request.data['password']):
+            return Response({"details": "Not found"}, status=status.HTTP_404_NOT_FOUND)
+        token, created = Token.objects.get_or_create(user=user)
+        serializer = UserSerializer(instance=user)
+        return Response({"token": token.key, "user": serializer.data})
+
+
+
+class SignUp(mixins.CreateModelMixin, generics.GenericAPIView):
+    def post(self, request, *args, **kwargs):
+        serializer = UserSerializer(data=request.data)
+        if serializer.is_valid():
+            serializer.save()
+            user = User.objects.get(username=request.data['username'])
+            user.set_password(request.data['password'])
+            user.save()
+            token = Token.objects.create(user=user)
+            return Response({"token": token.key, "user": serializer.data})
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+    # authentication_classes = [SessionAuthentication, BasicAuthentication]
+    # permission_classes = [IsAuthenticated]
+
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
@@ -16,6 +47,11 @@ class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericA
 
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
+
+class DeleteUser(APIView):
+    def delete(self, request, userId):
+        User.objects.filter(id=userId).delete()
+        return Response(status=status.HTTP_200_OK)
 
 class AuthorList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     serializer_class = AuthorSerializer
@@ -35,13 +71,15 @@ class BookList(mixins.ListModelMixin, generics.GenericAPIView):
         return self.list(request, *args, **kwargs)
 
 
-class BookCreat(mixins.CreateModelMixin, generics.GenericAPIView):
+class BookOperations(mixins.CreateModelMixin, mixins.DestroyModelMixin, generics.GenericAPIView):
     serializer_class = CreateBookSerializer
     queryset = Book.objects.all()
 
     def post(self, request, *args, **kwargs):
         return self.create(request, *args, **kwargs)
 
+    def delete(self, request, *args, **kwargs):
+        return self.destroy(request, *args, **kwargs)
 
 class BookRentable(APIView):
     def get(self, request):

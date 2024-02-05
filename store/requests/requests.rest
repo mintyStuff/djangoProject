@@ -5,3 +5,21 @@ content-type: application/json
 {
     "name": "Jan Lechowski"
 }
+
+### signup
+POST http://localhost:8000/store/signup/ HTTP/1.1
+content-type: application/json
+
+{
+    "username": "JJ", "password": "123"
+}
+
+### login
+POST http://localhost:8000/store/login/ HTTP/1.1
+content-type: application/json
+
+{
+    "username": "JJ", "password": "123"
+}
+
+
