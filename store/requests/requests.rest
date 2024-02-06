@@ -23,3 +23,9 @@ content-type: application/json
 }
 
 
+### login
+GET http://localhost:8000/store/users/ HTTP/1.1
+content-type: application/json
+Authorization: Token e5eee6fff89bbc17d7c385205d172189a0564813
+
+{}

@@ -5,11 +5,15 @@ from . models import Author, Book # User
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import SessionAuthentication, TokenAuthentication
+from rest_framework.permissions import IsAuthenticated, BasePermission
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
+
+class SuperUserOnly(BasePermission):
+    def has_permission(self, request, view):
+        return request.user.is_superuser
 
 
 class Login(mixins.CreateModelMixin, generics.GenericAPIView):
@@ -36,8 +40,8 @@ class SignUp(mixins.CreateModelMixin, generics.GenericAPIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
-    # authentication_classes = [SessionAuthentication, BasicAuthentication]
-    # permission_classes = [IsAuthenticated]
+    # authentication_classes = [SessionAuthentication, TokenAuthentication]
+    # permission_classes = [IsAuthenticated&SuperUserOnly]
 
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -88,7 +92,6 @@ class BookRentable(APIView):
         return Response(serializer.data)
 
 class BookRent(APIView):
-
     def put(self, request, bookId, userId):
         update_book = rent_book(bookId, userId)
         update_book.save()
@@ -97,7 +100,6 @@ class BookRent(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class BookReturn(APIView):
-        
     def put(self, request, returnedBookId):
         update_book = return_book(returnedBookId)
         update_book.save()
