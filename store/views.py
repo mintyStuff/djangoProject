@@ -6,7 +6,7 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.authentication import SessionAuthentication, TokenAuthentication
-from rest_framework.permissions import IsAuthenticated, BasePermission
+from rest_framework.permissions import IsAuthenticated, BasePermission, SAFE_METHODS
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
@@ -15,8 +15,19 @@ class SuperUserOnly(BasePermission):
     def has_permission(self, request, view):
         return request.user.is_superuser
 
+class IsReadyOnlyRequest(BasePermission):
+    def has_permission(self, request, view):
+        return request.method in SAFE_METHODS
+
+
+class IsPostRequest(BasePermission):
+    def has_permission(self, request, view):
+        return request.method == "POST"
+
 
 class Login(mixins.CreateModelMixin, generics.GenericAPIView):
+    serializer_class = UserSerializer
+
     def post(self, request, *args, **kwargs):
         user = get_object_or_404(User, username=request.data['username'])
         if not user.check_password(request.data['password']):
@@ -28,6 +39,8 @@ class Login(mixins.CreateModelMixin, generics.GenericAPIView):
 
 
 class SignUp(mixins.CreateModelMixin, generics.GenericAPIView):
+    serializer_class = UserSerializer
+
     def post(self, request, *args, **kwargs):
         serializer = UserSerializer(data=request.data)
         if serializer.is_valid():
@@ -41,7 +54,7 @@ class SignUp(mixins.CreateModelMixin, generics.GenericAPIView):
 
 class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
     authentication_classes = [SessionAuthentication, TokenAuthentication]
-    permission_classes = [IsAuthenticated&SuperUserOnly]
+    permission_classes = [IsAuthenticated]
 
     serializer_class = UserSerializer
     queryset = User.objects.all()
@@ -53,11 +66,17 @@ class UserList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericA
         return self.create(request, *args, **kwargs)
 
 class DeleteUser(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated&SuperUserOnly]
+
     def delete(self, request, userId):
         User.objects.filter(id=userId).delete()
         return Response(status=status.HTTP_200_OK)
 
 class AuthorList(mixins.ListModelMixin, mixins.CreateModelMixin, generics.GenericAPIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated&IsReadyOnlyRequest]
+
     serializer_class = AuthorSerializer
     queryset = Author.objects.all()
 
@@ -76,6 +95,9 @@ class BookList(mixins.ListModelMixin, generics.GenericAPIView):
 
 
 class BookOperations(mixins.CreateModelMixin, mixins.DestroyModelMixin, generics.GenericAPIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated&SuperUserOnly]
+
     serializer_class = CreateBookSerializer
     queryset = Book.objects.all()
 
@@ -86,12 +108,18 @@ class BookOperations(mixins.CreateModelMixin, mixins.DestroyModelMixin, generics
         return self.destroy(request, *args, **kwargs)
 
 class BookRentable(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def get(self, request):
         book = Book.objects.all().filter(user=None).distinct()
         serializer = BookSerializer(book, many=True)
         return Response(serializer.data)
 
 class BookRent(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def put(self, request, bookId, userId):
         update_book = rent_book(bookId, userId)
         update_book.save()
@@ -100,6 +128,9 @@ class BookRent(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 class BookReturn(APIView):
+    authentication_classes = [SessionAuthentication, TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+
     def put(self, request, returnedBookId):
         update_book = return_book(returnedBookId)
         update_book.save()

@@ -19,7 +19,7 @@ POST http://localhost:8000/store/login/ HTTP/1.1
 content-type: application/json
 
 {
-    "username": "jlp", "password": "pbkdf2_sha256$260000$ManImD3snLJCPK3LNyjk0p$cta1MpLjABFAiDjrK9fiiFLk/QjDYdCpaji0CSU719M="
+    "username": "JJ", "password": "123"
 }
 
 
